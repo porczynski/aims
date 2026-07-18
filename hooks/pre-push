@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# AIMS guard: block direct push to main; integration goes through `aims publish` (AIMS_PUBLISH=1).
+[ "${AIMS_PUBLISH:-0}" = "1" ] && exit 0
+while read -r _local _lsha remote _rsha; do
+  [ "$remote" = "refs/heads/main" ] && { echo "BLOCKED: direct push to main. Use: aims publish <session-id>" >&2; exit 1; }
+done
+exit 0

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mode="${1:-write}"
+root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$root" ] || { echo "ERROR: not in a git repo" >&2; exit 2; }
+cd "$root"
+echo "OK: AIMS does not block on a dirty working tree (mode=$mode)."
+echo "Use: aims start <project> <topic> <agent>"

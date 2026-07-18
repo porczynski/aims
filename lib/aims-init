@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Scaffolds a fresh AIMS data repo: the private, per-user repo that AIMS operates on.
+# The ENGINE (this project) stays separate and public; the DATA repo is yours.
+home="${1:-${AIMS_HOME:-$HOME/.aims}}"
+[ -e "$home/.git" ] && { echo "AIMS data repo already exists at $home"; exit 0; }
+mkdir -p "$home"/{sessions/work,.worktrees}
+cd "$home"
+git init -q -b main 2>/dev/null || { git init -q && git checkout -q -b main; }
+cat > .gitignore <<'GI'
+.worktrees/
+credentials/
+*.env
+.claude
+.gemini
+.warp
+*.dump
+*.bak
+GI
+cat > SESSIONS.md <<'SM'
+# Session Registry (append-only)
+
+| id | date | time | project | topic | path | notes | status |
+|----|------|------|---------|-------|------|-------|--------|
+SM
+cat > README.md <<'RM'
+# AIMS data repo
+
+Private per-user data for the AIMS session system. This repo holds your sessions,
+project state and registry. The AIMS engine (scripts) lives separately.
+
+- `sessions/work/<id>/` — per-session artifacts (owned by the running agent)
+- `SESSIONS.md` — append-only registry
+- `credentials/` — gitignored; never commit secrets
+RM
+mkdir -p credentials
+echo "# Secrets live here (gitignored). Never commit real values." > credentials/README.md
+git add -A && git commit -q -m "🌱 init: AIMS data repo"
+echo "✅ AIMS data repo ready at $home"
+echo "   Set AIMS_HOME=$home and add a remote:  git -C $home remote add origin <url>"

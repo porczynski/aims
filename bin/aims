@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Portable resolve of the install root (BSD/macOS + GNU/Linux, follows symlinks).
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"; SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+AIMS_ROOT="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+export AIMS_ROOT
+cmd="${1:-help}"; [ $# -gt 0 ] && shift || true
+case "$cmd" in
+  start|save|handoff|adopt|publish|list) exec "$AIMS_ROOT/lib/aims-$cmd" "$@" ;;
+  init)      exec "$AIMS_ROOT/lib/aims-init" "$@" ;;
+  artifacts) exec "$AIMS_ROOT/lib/aims-artifacts" "$@" ;;
+  doctor)    exec "$AIMS_ROOT/lib/aims-doctor" "$@" ;;
+  preflight) exec "$AIMS_ROOT/lib/session-preflight" "$@" ;;
+  version|-v|--version) grep -m1 . "$AIMS_ROOT/VERSION" 2>/dev/null || echo "AIMS (dev)" ;;
+  help|-h|--help|"")
+    cat <<'USAGE'
+AIMS — AI Multi-agent Sessions
+Git-native session management for AI agents across machines.
+
+usage: aims <command> [args]
+
+  init [dir]            Scaffold a data repo (default: $AIMS_HOME or ~/.aims)
+  start <proj> <topic> [agent] [--scope ...]   Start a session (branch + worktree)
+  save                  Checkpoint: commit whole worktree + push (run in worktree)
+  handoff [note]        Hand session to another machine/agent (push all + mark)
+  adopt <session-id> [--remote]   Take over a session from origin
+  publish <session-id>  Merge session to main, append registry, delete branch
+  list                  List active sessions with age/scope/STALE flag
+  artifacts <id>        Print/create the session dir in the shared store (AIMS_ARTIFACTS)
+  doctor                Health-check the install and data repo
+  version               Print version
+
+Docs: docs/AIMS.md · docs/ARCHITECTURE.md · docs/COMMANDS.md
+Env:  AIMS_HOME (data repo), AIMS_GIT_NAME, AIMS_GIT_EMAIL, AIMS_ARTIFACTS (shared store)
+USAGE
+    ;;
+  *) echo "aims: unknown command '$cmd' (try 'aims help')" >&2; exit 2 ;;
+esac

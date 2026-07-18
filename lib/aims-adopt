@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+arg="${1:-}"                                                                          # aims adopt <session-id|ai/session-id> [--remote]
+[ -n "$arg" ] || { echo "usage: aims adopt <session-id> [--remote]" >&2; exit 2; }
+remote=0; [ "${2:-}" = "--remote" ] && remote=1                                       # --remote = report only, do NOT create a local worktree (work stays on the session host)
+repo="${AIMS_HOME:-$HOME/.aims}"
+branch="$arg"; [[ "$branch" == ai/* ]] || branch="ai/$arg"
+sid="${branch#ai/}"
+[[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
+wt="$repo/.worktrees/$sid"
+git -C "$repo" fetch -q origin main "$branch" 2>/dev/null || { echo "ERROR: no branch origin/$branch (wrong session id?)" >&2; exit 1; }
+ahead=$(git -C "$repo" rev-list --count "origin/$branch" ^origin/main)
+[ "$ahead" = "0" ] && { echo "REFUSE: $sid is already merged to main (0 commits ahead) — nothing to adopt." >&2; exit 1; }
+age_min=$(( ( $(date -u +%s) - $(git -C "$repo" log -1 --format=%ct "origin/$branch") ) / 60 ))   # freshness of the branch tip
+hstatus=$(git -C "$repo" show "origin/$branch:sessions/work/$sid/metadata.json" 2>/dev/null | python3 -c 'import json,sys;print(json.load(sys.stdin).get("status",""))' 2>/dev/null || echo "")
+if [ "$hstatus" = "handoff" ]; then
+  echo "OK: session HANDED OFF (status=handoff) — source pushed everything and released it. Safe to adopt." >&2
+elif [ "$age_min" -lt 120 ]; then
+  echo "WARNING: origin/$branch was updated $age_min min ago and status != handoff — another agent may be ACTIVE. Confirm the session is idle (two writers = conflict), or ask the source to run 'aims handoff'." >&2
+fi
+sep(){ printf '%s\n' "======================================================================"; }
+sep; echo "ADOPTION REPORT — $sid"; sep
+echo "  source of truth: origin. This is the PUSHED state; unpushed work on the source machine is NOT visible here."
+git -C "$repo" show "origin/$branch:sessions/work/$sid/metadata.json" 2>/dev/null > /tmp/aims-adopt-meta.$$.json || true
+tools=$(python3 - <<PYEOF
+import json
+try:
+    m=json.load(open('/tmp/aims-adopt-meta.$$.json'))
+except Exception:
+    print(''); raise SystemExit
+print(' '.join(m.get('environment',{}).get('toolchain',[])))
+PYEOF
+)
+python3 - <<PYEOF
+import json
+try:
+    m=json.load(open('/tmp/aims-adopt-meta.$$.json'))
+except Exception:
+    print('  (could not read metadata)'); raise SystemExit
+g=m.get
+print('  project : '+str(g('project')))
+print('  topic   : '+str(g('topic')))
+print('  author  : '+str(g('agent'))+'   started: '+str(g('started_at',''))[:16])
+print('  scope   : '+(','.join(g('scope',[])) or '-'))
+print('  --- WORK ENVIRONMENT (from session metadata) ---')
+e=g('environment')
+if not e or not any(e.get(k) for k in ('code_repos','toolchain','exec_host','setup','test')):
+    print('  environment block is EMPTY.')
+    print('  -> The adopting agent MUST analyze the environment itself: read worklog.md and the')
+    print('     session plan, determine code repos and toolchain, check they exist on this machine.')
+else:
+    print('  code_repos: '+str(e.get('code_repos') or '(none/not needed)'))
+    print('  toolchain : '+str(e.get('toolchain') or '(none/not needed)'))
+    print('  exec_host : '+str(e.get('exec_host') or '(portable — any host)'))
+    print('  setup     : '+str(e.get('setup') or '-'))
+    print('  test      : '+str(e.get('test') or '-'))
+PYEOF
+rm -f /tmp/aims-adopt-meta.$$.json
+echo "  --- PROBE THIS HOST ($(hostname -s)) ---"
+missing=0
+if [ -n "$tools" ]; then
+  for t in $tools; do
+    printf "  %-10s " "$t"
+    if command -v "$t" >/dev/null 2>&1; then echo "OK $($t --version 2>&1 | head -1)"; else echo "MISSING on this host"; missing=1; fi
+  done
+else
+  echo "  (no declared toolchain — agent determines it from the worklog; do not assume the environment is ready)"
+fi
+if [ -n "${AIMS_ARTIFACTS:-}" ]; then                                                # optional shared large-file store (docs/SHARED-STORE.md)
+  [ -d "$AIMS_ARTIFACTS" ] && echo "  artifact store: mounted at $AIMS_ARTIFACTS" || echo "  artifact store: AIMS_ARTIFACTS set but NOT mounted ($AIMS_ARTIFACTS)"
+fi
+echo "  --- RECOMMENDATION ---"
+if [ "$missing" = 1 ]; then
+  echo "  This host is MISSING part of the session toolchain. Options:"
+  echo "     (a) install the missing tools here, or"
+  echo "     (b) adopt on a host that has them, or"
+  echo "     (c) remote mode: work in the worktree on the host that has the toolchain (aims adopt <sid> --remote there)."
+elif [ -n "$tools" ]; then
+  echo "  This host has the full declared toolchain — local adoption is fine."
+else
+  echo "  Toolchain not declared — the agent MUST verify the environment before coding."
+fi
+if [ "$remote" = 1 ]; then
+  echo "  --- --remote MODE: no local worktree created. Work directly in the worktree on the session host. ---"
+  sep; exit 0
+fi
+if [ -d "$wt" ]; then echo "INFO: worktree already exists: $wt"; else git -C "$repo" worktree add "$wt" "$branch"; fi
+wl="$wt/sessions/work/$sid/worklog.md"
+adopter="${AIMS_AGENT:-$(whoami)}@$(hostname -s)"
+printf '\n- ADOPTED %s by %s — continuing from ARTIFACTS (git+worklog), NOT from the previous agent context.\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$adopter" >> "$wl"
+git -C "$wt" add "sessions/work/$sid/worklog.md" >/dev/null 2>&1 || true
+git -C "$wt" -c user.name="${AIMS_GIT_NAME:-AIMS Agent}" -c user.email="${AIMS_GIT_EMAIL:-aims@localhost}" commit -q -m "🔄 session: adopt $sid by $adopter" || true
+git -C "$wt" push -q origin "$branch" || true
+sep; echo "OK: adopted. Work in: $wt (branch $branch). Close with: aims publish $sid"; sep

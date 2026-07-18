@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo="${AIMS_HOME:-$HOME/.aims}"
+now="$(date -u +%s)"
+git -C "$repo" fetch origin '+refs/heads/ai/*:refs/remotes/origin/ai/*' --prune -q 2>/dev/null || true  # refresh; offline fallback below
+git -C "$repo" ls-remote --heads origin 'refs/heads/ai/*' 2>/dev/null | sed 's#.*refs/heads/##' | sort | while read -r br; do
+  sid="${br#ai/}"; ts="${sid%%-*}"  # sid starts with YYYYMMDDTHHMMSSZ
+  start="$(date -ju -f '%Y%m%dT%H%M%SZ' "$ts" +%s 2>/dev/null || date -u -d "${ts:0:8} ${ts:9:2}:${ts:11:2}:${ts:13:2}" +%s 2>/dev/null || echo "$now")"  # BSD/GNU date
+  age_h=$(( (now - start) / 3600 ))
+  scope="$(git -C "$repo" show "origin/$br:sessions/work/$sid/metadata.json" 2>/dev/null | python3 -c 'import sys,json; print(",".join(json.load(sys.stdin).get("scope",[])) or "-")' 2>/dev/null || echo '-')"
+  flag=""; [ "$age_h" -ge 48 ] && flag="  ⚠️ STALE(>48h — publish or delete)"
+  printf '%s  age=%sh  scope=%s%s\n' "$br" "$age_h" "$scope" "$flag"
+done

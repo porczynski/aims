@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ -n "${AIMS_ROOT:-}" ]; then AIMS_HOOKS="$AIMS_ROOT/hooks"; else AIMS_HOOKS="$(cd "$(dirname "$0")/../hooks" && pwd)"; fi
+repo="${AIMS_HOME:-$HOME/.aims}"
+hooks_dir="$(git -C "$repo" rev-parse --git-common-dir)/hooks"  # common dir = hooks shared by all worktrees
+install -m 0755 "$AIMS_HOOKS/pre-push" "$hooks_dir/pre-push"
+echo "OK: pre-push hook installed at $hooks_dir/pre-push"

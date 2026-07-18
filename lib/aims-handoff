@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Run INSIDE a session worktree, on the USER's request ("hand off the session"), when switching to
+# another machine/agent. Guarantees origin has the COMPLETE session work and marks it as handed off
+# (status=handoff) so aims adopt on the other side knows it is safe to take over.
+# Does NOT merge to main (this is a pause with handover, not the end). Close with aims publish.
+branch="$(git branch --show-current)"
+[[ "$branch" == ai/* ]] || { echo "ERROR: aims handoff must run inside an ai/<session-id> worktree" >&2; exit 2; }
+sid="${branch#ai/}"
+[[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
+note="${1:-}"                                                                    # optional handoff note (e.g. "waiting on OAuth client id")
+meta="sessions/work/$sid/metadata.json"
+[ -f "$meta" ] || { echo "ERROR: missing $meta — is this a session worktree?" >&2; exit 2; }
+python3 - "$meta" <<PY                                                           # status=handoff + timestamp in metadata
+import json,sys,datetime
+p=sys.argv[1]; m=json.load(open(p))
+m['status']='handoff'
+m['handoff_at']=datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+m['handoff_from']=__import__('socket').gethostname().split('.')[0]
+json.dump(m,open(p,'w'),indent=2,ensure_ascii=False); open(p,'a').write('\n')
+PY
+wl="sessions/work/$sid/worklog.md"
+{ printf '\n- HANDOFF %s from %s — origin has the COMPLETE work, ready for `aims adopt %s` elsewhere.' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(hostname -s)" "$sid"
+  [ -n "$note" ] && printf ' Note: %s' "$note"; printf '\n'; } >> "$wl"
+git add -A                                                                       # the WHOLE session worktree, not only sessions/ — closes the "save pushes only session files" gap
+if git diff --cached --quiet; then echo "INFO: no uncommitted changes; pushing the handoff status only"; fi
+git -c user.name="${AIMS_GIT_NAME:-AIMS Agent}" -c user.email="${AIMS_GIT_EMAIL:-aims@localhost}" commit -q -m "🤝 session: handoff $sid from $(hostname -s)" || true
+git push -q -u origin "$branch"
+echo "======================================================================"
+echo "OK: HANDOFF $sid — origin synced (COMPLETE session work)."
+echo "   On the target machine/agent:  aims adopt $sid"
+echo "   (the live-writer warning will be SUPPRESSED — status=handoff = safe to take over)"
+echo "======================================================================"

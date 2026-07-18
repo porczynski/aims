@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+branch="$(git branch --show-current)"
+[[ "$branch" == ai/* ]] || { echo "ERROR: aims save must run inside an ai/<session-id> worktree" >&2; exit 2; }
+sid="${branch#ai/}"
+[[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
+git add -A                                                    # the WHOLE session worktree (state, docs, code, artifacts) — NOT only sessions/work. Staging only sessions/ used to silently drop project docs.
+if ! git diff --cached --quiet; then
+  git commit -m "📝 session: update $sid"
+else
+  echo "INFO: nothing new to commit"
+fi
+git fetch -q origin "$branch" 2>/dev/null || true
+if ! git rev-parse --verify --quiet "origin/$branch" >/dev/null; then
+  git push -u origin "$branch"; echo "OK: branch published to origin"
+elif [ -n "$(git rev-list "origin/$branch..HEAD" 2>/dev/null)" ]; then
+  git push origin "$branch"; echo "OK: pushed to origin"       # ALWAYS push when ahead — publish reads origin, so local-only commits would be invisible.
+else
+  echo "OK: origin already up to date (nothing to push)"
+fi

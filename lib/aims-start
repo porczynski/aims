@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project="${1:-}"; topic="${2:-}"; agent="${3:-opencode}"; scope_csv=""
+if [ "${3:-}" = "--scope" ]; then agent="opencode"; scope_csv="${4:-}"; elif [ "${4:-}" = "--scope" ]; then scope_csv="${5:-}"; fi  # aims-start <project> <topic> [agent] [--scope host:x,repo:y]
+[ -n "$project" ] && [ -n "$topic" ] || { echo "usage: aims-start <project> <topic> [agent] [--scope host:x,repo:y,...]" >&2; exit 2; }
+repo="${AIMS_HOME:-$HOME/.aims}"
+if [ -n "${AIMS_ROOT:-}" ]; then AIMS_LIB="$AIMS_ROOT/lib"; else AIMS_LIB="$(cd "$(dirname "$0")" && pwd)"; fi   # engine = directory of this script
+sanitize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'; }
+sid="$(date -u +%Y%m%dT%H%M%SZ)-$(sanitize "$project")-$(sanitize "$topic")-$(sanitize "$agent")"
+branch="ai/$sid"
+wt="$repo/.worktrees/$sid"
+scope_json="[]"
+[ -n "$scope_csv" ] && scope_json="[$(printf '%s' "$scope_csv" | sed -E 's/[[:space:]]//g; s/([^,]+)/"\1"/g')]"  # csv -> JSON array
+git -C "$repo" fetch origin main
+git -C "$repo" worktree add "$wt" -b "$branch" origin/main
+mkdir -p "$wt/sessions/work/$sid"
+cat > "$wt/sessions/work/$sid/metadata.json" <<JSON
+{
+  "session_id": "$sid",
+  "project": "$project",
+  "topic": "$topic",
+  "agent": "$agent",
+  "branch": "$branch",
+  "worktree": "$wt",
+  "status": "active",
+  "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "scope": $scope_json,
+  "environment": {
+    "code_repos": [],
+    "toolchain": [],
+    "exec_host": "",
+    "setup": "",
+    "test": ""
+  }
+}
+JSON
+touch "$wt/sessions/work/$sid/worklog.md" "$wt/sessions/work/$sid/commands.md" "$wt/sessions/work/$sid/tests.md" "$wt/sessions/work/$sid/final-summary.md" "$wt/sessions/work/$sid/prompt-log.md"
+git -C "$wt" add "sessions/work/$sid"
+git -C "$wt" commit -m "🔒 session: start $sid"
+git -C "$wt" push -u origin "$branch"
+"$AIMS_LIB/aims-list" 2>/dev/null | grep -v "^$sid" | grep -q "STALE\|SCOPE" && echo "INFO: check active sessions above for scope overlap (aims-list)" >&2 || true
+printf 'SESSION_ID=%s\nBRANCH=%s\nWORKTREE=%s\nSCOPE=%s\n' "$sid" "$branch" "$wt" "$scope_json"

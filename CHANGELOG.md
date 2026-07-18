@@ -1,0 +1,15 @@
+# Changelog
+
+## 0.3.0 — 2026-07-18
+- Renamed AISHA -> AIMS (AI Multi-agent Sessions). Command, env vars (AIMS_HOME, AIMS_ARTIFACTS,
+  AIMS_GIT_NAME/EMAIL), files and docs updated.
+
+## 0.2.0 — 2026-07-18
+- All engine code is English-only.
+- Added `aims artifacts <id>` and `AIMS_ARTIFACTS` awareness in `doctor` and `adopt`.
+- New `docs/SHARED-STORE.md` (NFS/SMB/GlusterFS/CephFS/MinIO/RustFS/Ceph RGW) + `docs/i18n/` structure.
+
+## 0.1.0 — 2026-07-18
+- Initial public extraction of the AIMS engine from a private data repo.
+- Commands: init, start, save, handoff, adopt, publish, list, doctor.
+- Portable `AIMS_HOME` data-repo model; pre-push main guard; secret scanner.
