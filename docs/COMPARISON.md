@@ -44,14 +44,17 @@ complementary, not competing.
 AIMS deliberately does **not** persist agent context. It persists the **work** as a git branch on
 `origin`, so it is portable in the two dimensions the per-tool resumers are not:
 
-| | Per-tool resume (`claude/codex/gemini/opencode` … `--resume`) | `aims adopt` |
+| | `claude --resume` | `aims adopt` |
 |---|---|---|
-| Layer | agent context (full reasoning replayed) | work artifacts (worklog + commits) |
-| Storage | local transcript file, per machine | git branch on `origin` |
-| Across machines | ❌ (file not synced; path-namespaced) | ✅ (fetched from origin) |
-| Across agents/tools | ❌ (format is tool-private) | ✅ (any agent reads git + worklog) |
-| What you continue from | the previous agent's head | durable artifacts, by design |
-| Failure mode it avoids | — | stranded work, two-writer clobber, silent loss |
+| What it moves | 🧠 full agent context | 📦 work artifacts (git) |
+| Scope | ⚠️ same machine, Claude only | ✅ any machine, any agent |
+| Medium | ⚠️ local `.jsonl` (not synced) | ✅ branch on `origin` |
+| codex / opencode / gemini | ❌ N/A | ✅ works |
+| What you continue from | 🧠 the previous agent's head | 📦 durable artifacts, by design |
+| Failure mode it avoids | — | 🛡️ stranded work · two-writer clobber · silent loss |
+
+(`claude --resume` stands in for every tool's native resume — `codex resume`, `gemini --resume`,
+opencode's session continue — they share the same shape.)
 
 ## Practical guidance
 
