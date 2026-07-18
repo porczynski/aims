@@ -77,6 +77,7 @@ See [`docs/COMMANDS.md`](docs/COMMANDS.md) for each command's guards and behavio
 for the full system reference.
 For an optional shared large-file store (NFS/SMB/GlusterFS/CephFS/MinIO/RustFS/Ceph RGW), see
 [`docs/SHARED-STORE.md`](docs/SHARED-STORE.md).
+How AIMS compares to per-tool session resume (Claude/Codex/Gemini/opencode/Aider): [`docs/COMPARISON.md`](docs/COMPARISON.md).
 
 **Documentation language:** English is the official language. Translations live under
 [`docs/i18n/`](docs/i18n/).

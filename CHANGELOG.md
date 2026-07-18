@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 — 2026-07-18
+- Added docs/COMPARISON.md: AIMS vs. per-tool session resume (Claude Code, Codex CLI, opencode,
+  Gemini CLI, Aider) — context layer vs. work layer, cross-machine and cross-tool portability.
+
 ## 0.3.0 — 2026-07-18
 - Renamed AISHA -> AIMS (AI Multi-agent Sessions). Command, env vars (AIMS_HOME, AIMS_ARTIFACTS,
   AIMS_GIT_NAME/EMAIL), files and docs updated.
