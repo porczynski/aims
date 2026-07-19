@@ -1,7 +1,7 @@
 # Changelog
 
-## 0.4.1 — 2026-07-19
-- COMPARISON.md: emoji-annotated `claude --resume` vs `aims adopt` table.
+## 0.4.2 — 2026-07-19
+- COMPARISON.md: simplified emoji set to ✅ / ⚠️ / ❌ only.
 
 ## 0.4.0 — 2026-07-18
 - Added docs/COMPARISON.md: AIMS vs. per-tool session resume (Claude Code, Codex CLI, opencode,
