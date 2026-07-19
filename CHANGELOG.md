@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.1 — 2026-07-19
+- New docs/AGENTS-MEMORY.md: how AIMS consolidates rules and work across agents, and how to add your own rules alongside the AIMS block.
+
 ## 0.5.0 — 2026-07-19
 - One-command setup: bootstrap.sh (curl | bash) installs engine, data repo, and wires agent rules.
 - New: aims wire-agents / lib/aims-wire-agents — teaches Claude/Codex/opencode/Gemini to understand
