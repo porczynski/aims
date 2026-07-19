@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-07-19
+- One-command setup: bootstrap.sh (curl | bash) installs engine, data repo, and wires agent rules.
+- New: aims wire-agents / lib/aims-wire-agents — teaches Claude/Codex/opencode/Gemini to understand
+  AIMS by writing an AIMS rules block into their config files (idempotent).
+- templates/AGENTS.md rewritten as agent onboarding: natural-language intent -> aims command mapping.
+- README: user-facing Install (agent + hardware/storage env), comparison table; Quick start/Commands
+  reframed as agent reference.
+
 ## 0.4.2 — 2026-07-19
 - COMPARISON.md: simplified emoji set to ✅ / ⚠️ / ❌ only.
 

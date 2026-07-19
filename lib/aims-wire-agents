@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Wire the AIMS agent rules into the config files that Claude Code, Codex, opencode and Gemini CLI read,
+# so every agent understands AIMS and maps the user's natural-language intent to `aims` commands.
+# Idempotent: each file gets one marker-delimited block; re-running refreshes it in place.
+root="${AIMS_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+rules="$root/templates/AGENTS.md"
+[ -f "$rules" ] || { echo "ERROR: rules template not found: $rules" >&2; exit 1; }
+begin="<!-- >>> AIMS agent rules >>> -->"; end="<!-- <<< AIMS agent rules <<< -->"
+block="$(printf '%s\n' "$begin"; cat "$rules"; printf '%s\n' "$end")"
+wire() {  # wire <file>
+  local f="$1"; mkdir -p "$(dirname "$f")"; touch "$f"
+  if grep -qF "$begin" "$f" 2>/dev/null; then
+    python3 - "$f" "$begin" "$end" "$rules" <<'PY'   # replace existing block
+import sys,io
+f,b,e,r=sys.argv[1:5]
+s=open(f).read(); pre=s.split(b)[0]; post=s.split(e,1)[1] if e in s else ''
+block=b+"\n"+open(r).read()+e
+open(f,'w').write(pre.rstrip('\n')+"\n\n"+block+post)
+PY
+    echo "  refreshed: $f"
+  else
+    printf '\n%s\n' "$block" >> "$f"; echo "  wired: $f"
+  fi
+}
+echo "Wiring AIMS agent rules:"
+wire "$HOME/AGENTS.md"                 # opencode + codex (project/home AGENTS.md)
+wire "$HOME/.codex/AGENTS.md"          # codex global
+wire "$HOME/.claude/CLAUDE.md"         # Claude Code
+wire "$HOME/.gemini/GEMINI.md"         # Gemini CLI
+echo "Done. Agents will now recognize AIMS intent (start/save/handoff/adopt/publish)."

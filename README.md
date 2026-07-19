@@ -9,6 +9,9 @@ AIMS turns each unit of AI work into a **git branch in an isolated worktree**. S
 **handed off** between machines and **adopted** by any agent — because the source of truth is a
 git remote (`origin`), never a machine-to-machine link. No agent needs access to another's computer.
 
+**You never learn AIMS commands.** Your agent does. You talk to it normally — *"save and close the
+session"*, *"hand this off to the other machine"* — and it runs AIMS for you.
+
 ---
 
 ## Why
@@ -32,34 +35,93 @@ Two layers, deliberately separated:
 You continue a session from **artifacts** (worklog + commits), never from the previous agent's head.
 That is what makes it agent-agnostic and machine-agnostic.
 
-The **engine** (this repo) is public and reusable. Your **data repo** (sessions, project state) is
-private and yours. The engine operates on `AIMS_HOME` (default `~/.aims`).
+## AIMS vs. a tool's own "resume"
+
+Every AI CLI has a native resume (`claude --resume`, `codex resume`, `gemini --resume`, opencode's
+session continue). They all move the **conversation** within **one tool** on **one machine**. AIMS
+moves the **work** across machines and across tools:
+
+| | `claude --resume` | `aims adopt` |
+|---|---|---|
+| What it moves | ✅ full agent context | ✅ work artifacts (git) |
+| Scope | ⚠️ same machine, Claude only | ✅ any machine, any agent (claude, codex, opencode, gemini) |
+| Medium | ⚠️ local `.jsonl` (not synced) | ✅ branch on `origin` |
+| codex / opencode / gemini | ❌ N/A | ✅ works |
+
+Full breakdown across all tools: [`docs/COMPARISON.md`](docs/COMPARISON.md).
+
+---
 
 ## Install
 
+Setup has two sides: the **agent environment** (the CLIs you talk to) and, optionally, a **hardware /
+storage environment** (a shared network store for large files). After setup you interact only with
+your agent in natural language — AIMS runs underneath.
+
+### 1. Prepare the agent environment
+
+Install whichever agent CLIs you use — any mix works:
+[Claude Code](https://claude.com/claude-code), [OpenAI Codex CLI](https://github.com/openai/codex),
+[opencode](https://opencode.ai), [Gemini CLI](https://github.com/google-gemini/gemini-cli).
+Also need `git`, `bash`, `python3` (macOS or Linux).
+
+### 2. One-command setup
+
 ```bash
-git clone https://github.com/<you>/aims ~/aims
-~/aims/install.sh                 # links `aims` into ~/.local/bin
-aims init                         # scaffold your private data repo (~/.aims)
-git -C ~/.aims remote add origin <your-private-data-repo>
+curl -fsSL https://raw.githubusercontent.com/visaroy/aims/main/bootstrap.sh | bash
+```
+
+This: installs the engine to `~/aims`, links the `aims` command, creates your private data repo
+(`~/.aims`), and **teaches every installed agent to understand AIMS** by writing an AIMS rules block
+into their config files (`~/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.claude/CLAUDE.md`, `~/.gemini/GEMINI.md`).
+Re-running is safe — it refreshes the block in place.
+
+Then point AIMS at your data repo and give it a remote so sessions sync across machines:
+
+```bash
+echo 'export AIMS_HOME=$HOME/.aims' >> ~/.bashrc   # or ~/.zshenv
+git -C ~/.aims remote add origin <your-private-data-repo-url>
+git -C ~/.aims push -u origin main
 aims doctor
 ```
 
-## Quick start
+### 3. (Optional) shared storage for large files
+
+Git holds session pointers; a shared network store holds the bytes (build outputs, dumps, datasets).
+Point `AIMS_ARTIFACTS` at a mounted store and pick any backend — **NFS, SMB/Samba, GlusterFS, CephFS,
+MinIO, RustFS, Ceph RGW**. Copy-paste recipes: [`docs/SHARED-STORE.md`](docs/SHARED-STORE.md).
+
+```bash
+echo 'export AIMS_ARTIFACTS=$HOME/.aims-artifacts' >> ~/.bashrc   # mount point of the shared store
+```
+
+### 4. Each additional machine
+
+Run step 2 on every machine and point them at the **same** `origin` data repo. That is the whole
+multi-machine setup — no machine ever connects to another; they meet on `origin`.
+
+### That's it — now just talk to your agent
+
+You do **not** memorize `aims start` / `aims save` / etc. Say what you want; the agent maps it:
+
+> "start on the login bug" · "save the session" · "hand this off to the laptop" ·
+> "continue session 2026…-login-fix" · "save and close the session"
+
+---
+
+## Reference (for agents, not users)
+
+> The commands below are what your **agent** runs after interpreting your intent. You never type them.
+> They are documented so agents — and the curious — know exactly what happens.
 
 ```bash
 aims start myproject "fix login bug" claude    # new branch + worktree
-cd ~/.aims/.worktrees/<session-id>             # work here
-# ... edit, commit ...
+cd ~/.aims/.worktrees/<session-id>             # agent works here
 aims save                                       # checkpoint: commit whole worktree + push
 aims handoff "waiting on CI"                     # hand to another machine (pushes everything)
-
-# on the other machine / another agent:
-aims adopt <session-id>                          # take it over from origin
+aims adopt <session-id>                          # (elsewhere) take it over from origin
 aims publish <session-id>                        # merge to main, register, done
 ```
-
-## Commands
 
 | Command | Purpose |
 |---|---|
@@ -70,16 +132,12 @@ aims publish <session-id>                        # merge to main, register, done
 | `aims adopt <id> [--remote]` | Take over a session from origin |
 | `aims publish <id>` | Merge to main, append registry, delete branch |
 | `aims list` | Active sessions with age / scope / STALE flag |
+| `aims artifacts <id>` | Session dir in the shared store (`AIMS_ARTIFACTS`) |
+| `aims wire-agents` | (Re)write the AIMS rules into agent config files |
 | `aims doctor` | Health-check engine + data repo |
 
-See [`docs/COMMANDS.md`](docs/COMMANDS.md) for each command's guards and behavior,
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the model, and [`docs/AIMS.md`](docs/AIMS.md)
-for the full system reference.
-For an optional shared large-file store (NFS/SMB/GlusterFS/CephFS/MinIO/RustFS/Ceph RGW), see
-[`docs/SHARED-STORE.md`](docs/SHARED-STORE.md).
-How AIMS compares to per-tool session resume (Claude/Codex/Gemini/opencode/Aider): [`docs/COMPARISON.md`](docs/COMPARISON.md).
-
-**Documentation language:** English is the official language. Translations live under
+See [`docs/COMMANDS.md`](docs/COMMANDS.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and
+[`docs/AIMS.md`](docs/AIMS.md). **Documentation language:** English is official; translations under
 [`docs/i18n/`](docs/i18n/).
 
 ## Guarantees & guards

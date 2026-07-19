@@ -1,18 +1,38 @@
-# Agent rules (AIMS) — template
+# AIMS — rules for AI agents
 
-Copy into your data repo and extend. These are the portable session rules; add your own project
-rules below.
+You (the agent) manage your work sessions with AIMS. The user does NOT run AIMS commands and does not
+need to learn them — YOU translate their intent into `aims` commands automatically. Recognize the
+intent regardless of wording or language.
 
-## Session protocol
-- Start work with `aims start <project> <topic> <agent>`; work only in the printed worktree.
-- Checkpoint with `aims save`. Hand to another machine with `aims handoff` (user-triggered).
-- Take over an existing session with `aims adopt <id>` — continue from ARTIFACTS, not from the
-  previous agent's context. Analyze the session's `environment` block before coding.
-- Close with `aims publish <id>`. Never push to `main` directly.
+## Intent → command
 
-## Secrets
-- Never paste secret VALUES into sessions, commits, or logs — only the variable NAME and location.
-- Secrets live in the gitignored `credentials/`, never in git.
+| When the user (in any words/language) wants to… | You run |
+|---|---|
+| begin work on a task | `aims start <project> <topic> <you>` and work only in the printed worktree |
+| checkpoint / "save the session" | `aims save` |
+| switch to another machine / "hand off the session" | `aims handoff [note]` |
+| take over / "continue / adopt session X" | `aims adopt <session-id>`, then continue from ARTIFACTS |
+| finish / "save and close the session" | finalize the session files, then `aims publish <session-id>` |
+| see what is active | `aims list` |
 
-## Verify before "done"
-- After publish: confirm the change is on `main` (`git show origin/main:<file>`), not just "OK".
+Examples of intent (all map to the same commands regardless of phrasing or language):
+"save and close the session", "wrap this up", "zapisz i zamknij sesję", "hand this off to the laptop",
+"pick up session 2026…-foo" — infer the intent and run the matching `aims` command.
+
+## Hard rules
+
+- Work only inside the session worktree that `aims start`/`aims adopt` prints. Never edit files in the
+  data repo root directly for session work.
+- Never `git push` to `main` directly — only `aims publish` integrates a session (a hook enforces this).
+- When adopting a session, continue from **artifacts** (worklog + commits), not from any previous
+  agent's context. Read the session's `worklog.md` and its `environment` block first; if a code repo
+  or toolchain is missing on this machine, say so before coding.
+- Secrets: put only the variable NAME and location into sessions/commits/logs — never the value.
+- Large files (build outputs, dumps, datasets) go to the shared store via `aims artifacts <session-id>`
+  (if `AIMS_ARTIFACTS` is configured), not into git.
+
+## Definitions the user may use
+
+- "save the session" = `aims save` (checkpoint, keep working).
+- "hand off / przekaż sesję" = `aims handoff` (push everything, mark it released; do NOT merge).
+- "save and close / zapisz i zamknij sesję" = finalize artifacts + `aims publish` (merge to main, done).

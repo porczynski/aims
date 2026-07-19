@@ -13,6 +13,7 @@ case "$cmd" in
   start|save|handoff|adopt|publish|list) exec "$AIMS_ROOT/lib/aims-$cmd" "$@" ;;
   init)      exec "$AIMS_ROOT/lib/aims-init" "$@" ;;
   artifacts) exec "$AIMS_ROOT/lib/aims-artifacts" "$@" ;;
+  wire-agents) exec "$AIMS_ROOT/lib/aims-wire-agents" "$@" ;;
   doctor)    exec "$AIMS_ROOT/lib/aims-doctor" "$@" ;;
   preflight) exec "$AIMS_ROOT/lib/session-preflight" "$@" ;;
   version|-v|--version) grep -m1 . "$AIMS_ROOT/VERSION" 2>/dev/null || echo "AIMS (dev)" ;;
@@ -32,6 +33,7 @@ usage: aims <command> [args]
   list                  List active sessions with age/scope/STALE flag
   artifacts <id>        Print/create the session dir in the shared store (AIMS_ARTIFACTS)
   doctor                Health-check the install and data repo
+  wire-agents           Teach installed agents to understand AIMS (writes their rule files)
   version               Print version
 
 Docs: docs/AIMS.md · docs/ARCHITECTURE.md · docs/COMMANDS.md
