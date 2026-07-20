@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# AIMS guard: this repo is public — a contributor's personal git identity must
+# never leak into its history. Block the commit unless the resolved author is the
+# anonymous engine identity. Checks git var (catches env / -c overrides), not config.
+set -euo pipefail
+want="The AIMS authors <aims@localhost>"
+have="$(git var GIT_AUTHOR_IDENT)"; have="${have% *}"; have="${have% *}"  # strip "TIMESTAMP +TZ" -> "Name <email>"
+if [ "$have" != "$want" ]; then
+  echo "BLOCKED: commit author is '$have', must be '$want'." >&2
+  echo "Fix: run ./dev-setup.sh (pins anonymous identity + reinstalls this hook)." >&2
+  exit 1
+fi
+exit 0

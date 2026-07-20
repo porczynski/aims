@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.2 — 2026-07-20
+- dev-setup.sh + hooks/pre-commit: pin an anonymous commit identity for the engine repo and block any commit that would leak a contributor's personal git identity into this public repo.
+
 ## 0.5.1 — 2026-07-19
 - New docs/AGENTS-MEMORY.md: how AIMS consolidates rules and work across agents, and how to add your own rules alongside the AIMS block.
 
