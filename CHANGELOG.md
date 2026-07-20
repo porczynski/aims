@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.6 — 2026-07-20
+- publish: registry row no longer garbles columns when the project or topic contains spaces (parse metadata fields one per line instead of whitespace-splitting).
+
 ## 0.5.5 — 2026-07-20
 - init/start/save/publish: fall back to a neutral commit identity (AIMS_GIT_NAME/EMAIL or "AIMS Agent <aims@localhost>") only when the data repo has no git identity, so a fresh machine no longer fails with "Author identity unknown"; a configured real identity is preserved. The check targets the data repo, not the current directory.
 

@@ -37,7 +37,7 @@ if [ -z "$(git -C "$pub" diff --name-only "$pub_base" HEAD)" ]; then    # guard:
 fi
 if [ -f "$pub/sessions/work/$sid/metadata.json" ] && ! grep -q "$sid" "$pub/SESSIONS.md" 2>/dev/null; then  # auto-append registry row unless the agent added one
   meta="$pub/sessions/work/$sid/metadata.json"
-  read -r proj topic started < <(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["project"], m["topic"], m["started_at"])' "$meta")
+  { read -r proj; read -r topic; read -r started; } < <(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["project"]); print(m["topic"]); print(m["started_at"])' "$meta")  # one field per line — project/topic may contain spaces
   last_n="$(grep -oE '^\| s[0-9]+' "$pub/SESSIONS.md" | grep -oE '[0-9]+' | sort -n | tail -1 || echo 0)"
   snn="s$(printf '%03d' $(( ${last_n:-0} + 1 )))"
   printf '| %s | %s | %s | %s | %s | sessions/work/%s/ | — | done |\n' "$snn" "${started:0:10}" "${started:11:5}" "$proj" "$topic" "$sid" >> "$pub/SESSIONS.md"
