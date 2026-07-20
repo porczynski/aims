@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.5 — 2026-07-20
+- init/start/save/publish: fall back to a neutral commit identity (AIMS_GIT_NAME/EMAIL or "AIMS Agent <aims@localhost>") only when the data repo has no git identity, so a fresh machine no longer fails with "Author identity unknown"; a configured real identity is preserved. The check targets the data repo, not the current directory.
+
 ## 0.5.4 — 2026-07-20
 - start/save/handoff/publish: fail fast with a clear, actionable message when the data repo has no 'origin' remote, instead of a cryptic git error; doctor's no-remote hint now names the exact `remote add` command. AIMS integrates sessions through origin, so a remote is required before starting sessions.
 

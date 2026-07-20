@@ -7,6 +7,8 @@ branch="$arg"; [[ "$branch" == ai/* ]] || branch="ai/$arg"
 sid="${branch#ai/}"
 [[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
 git -C "$repo" remote get-url origin >/dev/null 2>&1 || { echo "ERROR: data repo $repo has no 'origin' remote — publish integrates the session through origin/main. Add one:" >&2; echo "  git -C \"$repo\" remote add origin <url> && git -C \"$repo\" push -u origin main" >&2; exit 1; }
+git -C "$repo" config user.name  >/dev/null 2>&1 || export GIT_AUTHOR_NAME="${AIMS_GIT_NAME:-AIMS Agent}"    GIT_COMMITTER_NAME="${AIMS_GIT_NAME:-AIMS Agent}"      # fresh machine may have no git identity (merge + registry commits)
+git -C "$repo" config user.email >/dev/null 2>&1 || export GIT_AUTHOR_EMAIL="${AIMS_GIT_EMAIL:-aims@localhost}" GIT_COMMITTER_EMAIL="${AIMS_GIT_EMAIL:-aims@localhost}"  # fall back only when unset (real identity is kept)
 pub="$repo/.worktrees/_publish-$sid"
 agent_wt="$repo/.worktrees/$sid"
 if [ -d "$agent_wt" ]; then                                    # guard: publish used to force-remove the worktree and silently destroy uncommitted/unpushed work.
