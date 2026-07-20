@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.8 — 2026-07-20
+- init now installs the pre-push guard automatically, plus a new `aims install-hooks` command to (re)install it on an existing data repo — the "direct push to main is blocked" guarantee is now actually enforced on a fresh install, not just documented.
+- pre-push hook allows the initial creation of main (seeding a new remote) and blocks only direct pushes to an existing main.
+- aims-install-hooks: resolve an absolute hooks path so it works from any directory (previously relied on cwd being the repo).
+
 ## 0.5.7 — 2026-07-20
 - README: new "Instructions for Your Agent" section — a copy-paste English prompt that has an AI agent review AIMS for security and install it (non-interactive, with remote setup and verification). Documented that re-running the installer updates AIMS.
 
