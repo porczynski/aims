@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3 — 2026-07-20
+- bootstrap.sh: license/liability consent gate (MIT, "AS IS", at-your-own-risk) shown before any change; accept interactively or with AIMS_ACCEPT=1 for unattended installs.
+- wire-agents: detects installed agents and wires only those (no longer creates config files for absent agents), proposes the exact files and asks to confirm (skip with AIMS_YES=1), backs up each original once, and dedupes symlinked config files by realpath.
+
 ## 0.5.2 — 2026-07-20
 - dev-setup.sh + hooks/pre-commit: pin an anonymous commit identity for the engine repo and block any commit that would leak a contributor's personal git identity into this public repo.
 

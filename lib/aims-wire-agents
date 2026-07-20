@@ -1,18 +1,54 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Wire the AIMS agent rules into the config files that Claude Code, Codex, opencode and Gemini CLI read,
-# so every agent understands AIMS and maps the user's natural-language intent to `aims` commands.
-# Idempotent: each file gets one marker-delimited block; re-running refreshes it in place.
+# Teach the AI agents installed on THIS machine to understand AIMS by writing an AIMS rules
+# block into their config files. Detects which agents are present, proposes the exact files it
+# will change, backs up each original once, and wires only detected agents. Idempotent: each file
+# gets one marker-delimited block; re-running refreshes it in place (no second backup).
+# Skip the confirmation prompt with AIMS_YES=1 (bootstrap sets this after its own consent).
 root="${AIMS_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 rules="$root/templates/AGENTS.md"
 [ -f "$rules" ] || { echo "ERROR: rules template not found: $rules" >&2; exit 1; }
 begin="<!-- >>> AIMS agent rules >>> -->"; end="<!-- <<< AIMS agent rules <<< -->"
-block="$(printf '%s\n' "$begin"; cat "$rules"; printf '%s\n' "$end")"
-wire() {  # wire <file>
-  local f="$1"; mkdir -p "$(dirname "$f")"; touch "$f"
+realpath_of() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }  # portable; py3 is a dep
+
+detected=""; candidates=""  # space-lists; bash 3.2 has no assoc arrays
+add_agent() { detected="$detected $1"; }
+add_file()  { candidates="$candidates $1"; }
+command -v claude   >/dev/null 2>&1 && { add_agent claude;   add_file "$HOME/.claude/CLAUDE.md"; }
+command -v gemini   >/dev/null 2>&1 && { add_agent gemini;   add_file "$HOME/.gemini/GEMINI.md"; }
+command -v codex    >/dev/null 2>&1 && { add_agent codex;    add_file "$HOME/.codex/AGENTS.md"; add_file "$HOME/AGENTS.md"; }
+command -v opencode >/dev/null 2>&1 && { add_agent opencode; add_file "$HOME/AGENTS.md"; }
+[ -n "$detected" ] || { echo "No supported AI agent detected (claude/codex/opencode/gemini) — nothing to wire."; exit 0; }
+
+targets=""; seen=""  # dedupe by realpath so symlinked dotfiles (many point at one shared file) are wired once
+for f in $candidates; do
+  key="$(realpath_of "$f")"
+  case " $seen " in *" $key "*) continue;; esac
+  seen="$seen $key"; targets="$targets $key"
+done
+
+echo "Detected agents:$detected"
+echo "Will write the AIMS rules block into (backed up first):"
+for t in $targets; do echo "  $t"; done
+if [ "${AIMS_YES:-0}" != 1 ]; then
+  if ( : </dev/tty ) 2>/dev/null; then   # a real terminal is reachable
+    printf 'Proceed? [y/N] ' > /dev/tty; read -r ans < /dev/tty || ans=
+    case "$ans" in y|Y|yes|YES) ;; *) echo "Aborted — no files changed."; exit 1;; esac
+  else
+    echo "Non-interactive: re-run with AIMS_YES=1 to proceed, or run 'aims wire-agents' in a terminal." >&2
+    exit 1
+  fi
+fi
+
+wire() {  # wire <realpath-file>
+  local f="$1"; mkdir -p "$(dirname "$f")"
+  if [ -s "$f" ] && ! grep -qF "$begin" "$f" 2>/dev/null; then  # back up the genuine pre-AIMS original, once
+    local bak="$f.aims-backup-$(date +%Y%m%d%H%M%S)"; cp "$f" "$bak"; echo "  backup:  $bak"
+  fi
+  touch "$f"
   if grep -qF "$begin" "$f" 2>/dev/null; then
     python3 - "$f" "$begin" "$end" "$rules" <<'PY'   # replace existing block
-import sys,io
+import sys
 f,b,e,r=sys.argv[1:5]
 s=open(f).read(); pre=s.split(b)[0]; post=s.split(e,1)[1] if e in s else ''
 block=b+"\n"+open(r).read()+e
@@ -20,12 +56,9 @@ open(f,'w').write(pre.rstrip('\n')+"\n\n"+block+post)
 PY
     echo "  refreshed: $f"
   else
-    printf '\n%s\n' "$block" >> "$f"; echo "  wired: $f"
+    { printf '\n%s\n' "$begin"; cat "$rules"; printf '%s\n' "$end"; } >> "$f"; echo "  wired:   $f"
   fi
 }
 echo "Wiring AIMS agent rules:"
-wire "$HOME/AGENTS.md"                 # opencode + codex (project/home AGENTS.md)
-wire "$HOME/.codex/AGENTS.md"          # codex global
-wire "$HOME/.claude/CLAUDE.md"         # Claude Code
-wire "$HOME/.gemini/GEMINI.md"         # Gemini CLI
+for t in $targets; do wire "$t"; done
 echo "Done. Agents will now recognize AIMS intent (start/save/handoff/adopt/publish)."
