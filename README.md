@@ -14,6 +14,44 @@ session"*, *"hand this off to the other machine"* — and it runs AIMS for you.
 
 ---
 
+## 🤖 Instructions for Your Agent
+
+> [!TIP]
+> **Don't install AIMS by hand — hand this to your agent.** Copy the prompt below to your AI coding
+> agent (Claude Code, Codex CLI, opencode, or Gemini CLI) and it will review and install AIMS for you.
+
+```text
+Install AIMS from its official public repository: https://github.com/visaroy/aims
+
+1. Review it first. Read README.md, SECURITY.md, and LICENSE, and skim bootstrap.sh,
+   install.sh, and lib/. Confirm for me that it: makes no network calls except `git` to
+   repositories I configure, ships no secrets or telemetry, needs no elevated privileges,
+   and backs up any file it modifies. Summarize the security posture before installing.
+
+2. Install it (this accepts the MIT license and its "AS IS", no-warranty terms on my behalf):
+     curl -fsSL https://raw.githubusercontent.com/visaroy/aims/main/bootstrap.sh | AIMS_ACCEPT=1 bash
+   The installer links the `aims` command, creates my private data repo at ~/.aims, and adds an
+   AIMS rules block to the config of each AI agent it detects — backing up each original first.
+
+3. Give my data repo a remote so sessions sync across machines, then verify. Ask me for the URL
+   of a private git repo I control (create one if I don't have it), then run:
+     git -C ~/.aims remote add origin <MY_PRIVATE_DATA_REPO_URL>
+     git -C ~/.aims push -u origin main
+     aims doctor
+   Also add `export AIMS_HOME=$HOME/.aims` to my shell profile.
+
+4. Report what you reviewed, the security summary, which agent config files were changed (and
+   where the backups are), and the final `aims doctor` output.
+
+To update AIMS later, re-run the same one-command install — it fast-forwards the engine and
+refreshes the agent rules block in place.
+```
+
+Running this on more than one machine, each pointed at the **same** private data repo, is the whole
+multi-machine setup — the machines meet only on that remote, never on each other.
+
+---
+
 ## Why
 
 Running AI agents (Claude, Codex, opencode, Gemini) across a laptop and a workstation creates the
@@ -74,7 +112,8 @@ curl -fsSL https://raw.githubusercontent.com/visaroy/aims/main/bootstrap.sh | ba
 This: installs the engine to `~/aims`, links the `aims` command, creates your private data repo
 (`~/.aims`), and **teaches every installed agent to understand AIMS** by writing an AIMS rules block
 into their config files (`~/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.claude/CLAUDE.md`, `~/.gemini/GEMINI.md`).
-Re-running is safe — it refreshes the block in place.
+Re-running is safe — it refreshes the block in place. **This is also how you update AIMS:** re-run
+the same command and it fast-forwards the engine and refreshes the rules.
 
 Then point AIMS at your data repo and give it a remote so sessions sync across machines:
 

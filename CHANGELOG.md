@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.7 — 2026-07-20
+- README: new "Instructions for Your Agent" section — a copy-paste English prompt that has an AI agent review AIMS for security and install it (non-interactive, with remote setup and verification). Documented that re-running the installer updates AIMS.
+
 ## 0.5.6 — 2026-07-20
 - publish: registry row no longer garbles columns when the project or topic contains spaces (parse metadata fields one per line instead of whitespace-splitting).
 
