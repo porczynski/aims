@@ -8,7 +8,7 @@ command -v python3 >/dev/null && ok "python3 present" || err "python3 missing (a
 [ -d "$home/.git" ] && ok "data repo $home" || err "no data repo at $home (run: aims init)"
 [ -f "$home/SESSIONS.md" ] && ok "registry present" || warn "SESSIONS.md missing"
 if [ -d "$home/.git" ]; then
-  git -C "$home" remote get-url origin >/dev/null 2>&1 && ok "origin remote set" || warn "no origin remote (single-machine only until set)"
+  git -C "$home" remote get-url origin >/dev/null 2>&1 && ok "origin remote set" || warn "no origin remote — add one before starting sessions: git -C $home remote add origin <url>"
 fi
 if [ -n "${AIMS_ARTIFACTS:-}" ]; then
   [ -d "$AIMS_ARTIFACTS" ] && ok "artifact store mounted: $AIMS_ARTIFACTS" || warn "AIMS_ARTIFACTS set but not mounted: $AIMS_ARTIFACTS"

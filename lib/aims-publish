@@ -6,6 +6,7 @@ repo="${AIMS_HOME:-$HOME/.aims}"
 branch="$arg"; [[ "$branch" == ai/* ]] || branch="ai/$arg"
 sid="${branch#ai/}"
 [[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
+git -C "$repo" remote get-url origin >/dev/null 2>&1 || { echo "ERROR: data repo $repo has no 'origin' remote — publish integrates the session through origin/main. Add one:" >&2; echo "  git -C \"$repo\" remote add origin <url> && git -C \"$repo\" push -u origin main" >&2; exit 1; }
 pub="$repo/.worktrees/_publish-$sid"
 agent_wt="$repo/.worktrees/$sid"
 if [ -d "$agent_wt" ]; then                                    # guard: publish used to force-remove the worktree and silently destroy uncommitted/unpushed work.

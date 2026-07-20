@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.4 — 2026-07-20
+- start/save/handoff/publish: fail fast with a clear, actionable message when the data repo has no 'origin' remote, instead of a cryptic git error; doctor's no-remote hint now names the exact `remote add` command. AIMS integrates sessions through origin, so a remote is required before starting sessions.
+
 ## 0.5.3 — 2026-07-20
 - bootstrap.sh: license/liability consent gate (MIT, "AS IS", at-your-own-risk) shown before any change; accept interactively or with AIMS_ACCEPT=1 for unattended installs.
 - wire-agents: detects installed agents and wires only those (no longer creates config files for absent agents), proposes the exact files and asks to confirm (skip with AIMS_YES=1), backs up each original once, and dedupes symlinked config files by realpath.

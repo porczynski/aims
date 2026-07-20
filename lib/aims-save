@@ -4,6 +4,7 @@ branch="$(git branch --show-current)"
 [[ "$branch" == ai/* ]] || { echo "ERROR: aims save must run inside an ai/<session-id> worktree" >&2; exit 2; }
 sid="${branch#ai/}"
 [[ "$sid" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "ERROR: unsafe session id: $sid" >&2; exit 2; }
+git remote get-url origin >/dev/null 2>&1 || { echo "ERROR: no 'origin' remote — AIMS syncs sessions through origin. Add one to your data repo and retry:" >&2; echo "  git remote add origin <url> && git push -u origin main" >&2; exit 1; }
 git add -A                                                    # the WHOLE session worktree (state, docs, code, artifacts) — NOT only sessions/work. Staging only sessions/ used to silently drop project docs.
 if ! git diff --cached --quiet; then
   git commit -m "📝 session: update $sid"

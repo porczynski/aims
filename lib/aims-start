@@ -4,6 +4,7 @@ project="${1:-}"; topic="${2:-}"; agent="${3:-opencode}"; scope_csv=""
 if [ "${3:-}" = "--scope" ]; then agent="opencode"; scope_csv="${4:-}"; elif [ "${4:-}" = "--scope" ]; then scope_csv="${5:-}"; fi  # aims-start <project> <topic> [agent] [--scope host:x,repo:y]
 [ -n "$project" ] && [ -n "$topic" ] || { echo "usage: aims-start <project> <topic> [agent] [--scope host:x,repo:y,...]" >&2; exit 2; }
 repo="${AIMS_HOME:-$HOME/.aims}"
+git -C "$repo" remote get-url origin >/dev/null 2>&1 || { echo "ERROR: data repo $repo has no 'origin' remote. AIMS syncs sessions through origin; add one first:" >&2; echo "  git -C \"$repo\" remote add origin <url> && git -C \"$repo\" push -u origin main" >&2; exit 1; }
 if [ -n "${AIMS_ROOT:-}" ]; then AIMS_LIB="$AIMS_ROOT/lib"; else AIMS_LIB="$(cd "$(dirname "$0")" && pwd)"; fi   # engine = directory of this script
 sanitize() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g'; }
 sid="$(date -u +%Y%m%dT%H%M%SZ)-$(sanitize "$project")-$(sanitize "$topic")-$(sanitize "$agent")"
