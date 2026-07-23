@@ -51,12 +51,36 @@ dla codex/opencode/gemini, przywiązana do jednej maszyny).
    (fetch z origin, worktree z istniejącej gałęzi, kontynuacja)
 ```
 
+Po konflikcie merge podczas `aims publish` agent używa `aims rebase <sid>` zamiast ręcznego rebase.
+Komenda wymaga czystego worktree zsynchronizowanego dokładnie z `origin/ai/<sid>`, zapisuje prywatny
+OID w `refs/aims/rewrite/<sid>`, a następnie rebazuje na `origin/main`. `aims save` może wtedy użyć
+`--force-with-lease` wyłącznie dla tego dokładnego OID; zewnętrzny writer jest zawsze chroniony.
+Jeśli origin odrzuca force push, workflow odzyskiwania to: `git update-ref refs/aims/recovery/<sid> HEAD`,
+`git fetch origin main`, `git reset --hard refs/aims/rewrite/<sid>`,
+`git merge --no-commit --no-ff origin/main`, przywrócić tree przez
+`git checkout refs/aims/recovery/<sid> -- .`, `git add -A`, `git commit --no-edit`, a następnie
+`aims save`; recovery ref usunąć dopiero po sukcesie save, dzięki czemu rebased HEAD i unikalne
+rozwiązania konfliktu nie giną.
+`aims save` utrzymuje także lokalny sentinel `refs/aims/published/<sid>`, więc po wcześniejszej
+publikacji i późniejszym usunięciu gałęzi z origin nie odtworzy jej po prune tracking ref.
+Ten sam lifecycle jest współdzielony przez `start`, `rebase`, `handoff` i `adopt`; nieudany push
+checkpointu adopcji kończy się błędem, ale zachowuje worktree do odzyskania.
+Aktualizacje istniejących gałęzi w `save`, `handoff` i `adopt` używają dokładnego OID zaobserwowanego
+przez fetch; pierwsze utworzenie wymaga potwierdzenia braku gałęzi i lease z zerowym OID.
+`handoff` i `adopt` dodatkowo odmawiają działania, jeśli zaobserwowany tip origin nie jest przodkiem
+lokalnego `HEAD`, zanim zmienią checkpoint lub użyją lease.
+`adopt` wymaga ponadto, aby worktree był dokładnie na `ai/<sid>`; sprawdza tę nazwę i odpowiedni lokalny
+branch/`HEAD` także po utworzeniu worktree, więc stale branch lub błędny worktree nie jest modyfikowany.
+Aktywny konflikt zachowuje marker dla `--continue`/`--abort`; nierozpoczynający się rebase bez
+aktywnego stanu usuwa go compare-and-swap, jeśli `HEAD` pozostał bez zmian.
+
 ## 4. Komendy
 
 | Komenda | Gdzie uruchomić | Co robi |
 |---|---|---|
 | `aims start <projekt> <temat> [agent] [--scope ...]` | `$AIMS_HOME` | Nowa sesja: gałąź `ai/<sid>` + worktree z `origin/main` + szablon `metadata.json` (w tym pusty blok `environment`). |
 | `aims save` | w worktree | Checkpoint: `git add -A` (CAŁY worktree sesji — STATE.md, session-*.md, kod, artefakty) + commit + **push gdy ahead of origin**. Po naprawie 2026-07-18 nie gubi już plików projektu. |
+| `aims rebase <sid>` | `$AIMS_HOME` | Bezpieczny rebase czystego, zsynchronizowanego worktree na `origin/main`; marker rewrite jest lokalny i jednorazowy. |
 | `aims handoff [notka]` | w worktree | **Przekazanie maszyny** (polecenie USERA). `git add -A` (KOMPLET), commit, push, `status=handoff`. NIE scala do main. |
 | `aims adopt <sid> [--remote]` | `$AIMS_HOME` (dowolna maszyna) | Przejęcie z origin: raport środowiska + guardy, worktree z istniejącej gałęzi, wpis ADOPTED. `--remote` = tylko raport. |
 | `aims publish <sid>` | `$AIMS_HOME` | Domknięcie: merge gałęzi → main, wpis rejestru `sNNN`, usunięcie gałęzi z origin. Działa niezależnie od tego, który agent zaczął. |

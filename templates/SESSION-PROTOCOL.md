@@ -91,7 +91,8 @@ drzewie — NIE dodawaj wiersza ręcznie), pushuje `main` (z `AIMS_PUBLISH=1` dl
 usuwa remote branch i lokalne worktree.
 
 Przy konflikcie merge skrypt sprząta po sobie i wypisuje instrukcję: w swoim worktree
-`git fetch origin main && git rebase origin/main`, rozwiąż konflikty, `aims save`, ponów publish.
+`aims rebase <session-id>`, rozwiąż konflikty, `aims save`, ponów publish. Nie używaj ręcznego rebase:
+`aims rebase` zapisuje prywatny exact-OID lease, który chroni przed równoległym writerem.
 
 ## Higiena sesji
 

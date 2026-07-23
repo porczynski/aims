@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+- Added `aims rebase <session-id>` for clean, synchronized recovery from a publish merge conflict.
+- `aims save` now protects rewritten session branches with a private exact-OID marker and
+  `--force-with-lease`; unmarked divergence, remote advances, and deleted branches fail safely.
+- Publish errors now distinguish session merge conflicts from main-push races and explain the safe
+  merge alternative when a remote rejects rewritten-session force pushes.
+- `aims save` now persists a local publication sentinel across tracking-ref pruning and refuses to
+  recreate a previously published remote branch that was deleted.
+- Force-push policy recovery is now executable: reset to the captured rewrite OID, merge `origin/main`,
+  and save with an ordinary fast-forward push.
+- Non-resumable pre-rebase startup failures now clear an unchanged rewrite marker with compare-and-swap,
+  while active conflicts retain it for continue/abort recovery.
+- Publication sentinels now share one lifecycle helper and are seeded by start, save, rebase, handoff,
+  and adopt; adopt checkpoint push failures are fatal and retain the worktree.
+- No-force recovery now saves rebased `HEAD` in a recovery ref and merges it back after resetting to
+  the original remote tip, preserving unique resolved work.
+- Existing session updates in save, handoff, and adopt now use exact observed-OID leases; initial branch
+  creation asserts absence and uses a zero-OID lease, preventing deletion/recreation races.
+- No-force recovery now preserves actual conflict resolutions in a tree-preserving merge and retains
+  the recovery ref until ordinary save succeeds.
+- Handoff and adopt now refuse pre-existing remote divergence when the fetched tip is not an ancestor
+  of local `HEAD`; the harness covers both pre-fetch competing-writer cases.
+- Adopt now requires the reused or created worktree to be exactly on `ai/<sid>` and checks the observed
+  remote OID against that exact local branch/`HEAD`; stale local branches and wrong worktrees are covered.
+- Added a portable two-clone shell integration harness for normal saves, managed rewrites, conflicts,
+  competing writers, and failure guardrails.
+
 ## 0.5.8 — 2026-07-20
 - init now installs the pre-push guard automatically, plus a new `aims install-hooks` command to (re)install it on an existing data repo — the "direct push to main is blocked" guarantee is now actually enforced on a fresh install, not just documented.
 - pre-push hook allows the initial creation of main (seeding a new remote) and blocks only direct pushes to an existing main.

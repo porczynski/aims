@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+. "$script_dir/aims-sentinel"
 # Run INSIDE a session worktree, on the USER's request ("hand off the session"), when switching to
 # another machine/agent. Guarantees origin has the COMPLETE session work and marks it as handed off
 # (status=handoff) so aims adopt on the other side knows it is safe to take over.
@@ -12,6 +14,18 @@ git remote get-url origin >/dev/null 2>&1 || { echo "ERROR: handoff needs an 'or
 note="${1:-}"                                                                    # optional handoff note (e.g. "waiting on OAuth client id")
 meta="sessions/work/$sid/metadata.json"
 [ -f "$meta" ] || { echo "ERROR: missing $meta — is this a session worktree?" >&2; exit 2; }
+remote_ref="refs/remotes/origin/$branch"
+published_oid="$(aims_sentinel_oid "$sid" 2>/dev/null || true)"
+git fetch --prune origin
+observed_oid=""
+git rev-parse --verify --quiet "$remote_ref" >/dev/null && observed_oid="$(git rev-parse "$remote_ref")" || true
+if [ -n "$observed_oid" ]; then
+  aims_assert_observed_ancestor "$branch" "$observed_oid" "$(git rev-parse HEAD)"
+  aims_sentinel_mark "$sid" "$observed_oid"
+else
+  [ -z "$published_oid" ] || { echo "REFUSE: origin/$branch disappeared after prior publication; not recreating it during handoff." >&2; exit 1; }
+  aims_assert_remote_absent "$(git remote get-url origin)" "$branch"
+fi
 python3 - "$meta" <<PY                                                           # status=handoff + timestamp in metadata
 import json,sys,datetime
 p=sys.argv[1]; m=json.load(open(p))
@@ -25,8 +39,13 @@ wl="sessions/work/$sid/worklog.md"
   [ -n "$note" ] && printf ' Note: %s' "$note"; printf '\n'; } >> "$wl"
 git add -A                                                                       # the WHOLE session worktree, not only sessions/ — closes the "save pushes only session files" gap
 if git diff --cached --quiet; then echo "INFO: no uncommitted changes; pushing the handoff status only"; fi
-git -c user.name="${AIMS_GIT_NAME:-AIMS Agent}" -c user.email="${AIMS_GIT_EMAIL:-aims@localhost}" commit -q -m "🤝 session: handoff $sid from $(hostname -s)" || true
-git push -q -u origin "$branch"
+git -c user.name="${AIMS_GIT_NAME:-AIMS Agent}" -c user.email="${AIMS_GIT_EMAIL:-aims@localhost}" commit -q -m "🤝 session: handoff $sid from $(hostname -s)" || { echo "ERROR: handoff checkpoint commit failed; worktree retained." >&2; exit 1; }
+if [ -n "$observed_oid" ]; then
+  git push -q --force-with-lease="refs/heads/$branch:$observed_oid" -u origin "$branch"
+else
+  git push -q --force-with-lease="refs/heads/$branch:$(aims_zero_oid)" -u origin "$branch"
+fi
+aims_sentinel_mark "$sid" "$(git rev-parse HEAD)"
 echo "======================================================================"
 echo "OK: HANDOFF $sid — origin synced (COMPLETE session work)."
 echo "   On the target machine/agent:  aims adopt $sid"

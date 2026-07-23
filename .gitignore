@@ -1,3 +1,8 @@
 *.log
 *.tmp
 .DS_Store
+# BEGIN oh-my-opencode-slim worktrees
+.slim/worktrees/
+.slim/worktrees.json
+# END oh-my-opencode-slim worktrees
+.slim/deepwork/
